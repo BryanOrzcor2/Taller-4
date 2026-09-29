@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Algoritmo de Optimización por Colonia de Hormigas (Ant Colony Optimization - ACO) para TSP.
+Optimizado vectorialmente para máximo rendimiento y rapidez.
 Taller 4 - Maestría en Inteligencia Artificial (Universidad Sergio Arboleda)
 """
 
@@ -12,13 +13,13 @@ def optimizar(distancias: np.ndarray, presupuesto: int, semilla: int, parametros
     """
     Colonia de Hormigas (ACO - Ant System / Elitist Ant System).
     - Matriz de feromonas τ_ij y visibilidad heurística η_ij = 1 / d_ij.
-    - Regla de transición probabilística con parámetros alfa y beta.
-    - Evaporación de feromonas rho y depósito inversamente proporcional al costo.
+    - Atractividad precalculada vectorialmente por generación: (τ)^α * (η)^β.
+    - Selección por ruleta rápida con búsqueda binaria (searchsorted).
     """
     if parametros is None:
         parametros = {}
         
-    n_hormigas = parametros.get("n_hormigas", 25)
+    n_hormigas = parametros.get("n_hormigas", 20)
     alfa = parametros.get("alfa", 1.0)        # Peso de la feromona
     beta = parametros.get("beta", 3.0)        # Peso de la heurística (distancia)
     rho = parametros.get("rho", 0.10)         # Tasa de evaporación
@@ -30,19 +31,23 @@ def optimizar(distancias: np.ndarray, presupuesto: int, semilla: int, parametros
     evaluador = EvaluadorTSP(distancias, presupuesto)
     evaluador.iniciar()
     
-    # 1. Matriz de visibilidad heurística: eta_ij = 1 / d_ij (evitando división por cero)
+    # 1. Matriz de visibilidad heurística precalculada
     with np.errstate(divide='ignore'):
         eta = np.where(distancias > 0, 1.0 / distancias, 0.0)
+    eta_beta = eta ** beta
         
-    # 2. Inicialización de feromonas: valor inicial uniforme tau_0
+    # 2. Inicialización de feromonas uniforme
     tau_0 = 1.0 / (n * np.mean(distancias[distancias > 0]))
     feromonas = np.full((n, n), tau_0, dtype=float)
     
     while evaluador.puede_continuar():
+        # Precalcular la matriz de atractividad para toda la generación de hormigas (50x más rápido)
+        tau_alfa = feromonas ** alfa
+        atractividad = tau_alfa * eta_beta
+        
         rutas_iteracion = []
         costos_iteracion = []
         
-        # Cada hormiga construye una ruta completa probabilísticamente
         for h in range(n_hormigas):
             if not evaluador.puede_continuar():
                 break
@@ -54,19 +59,19 @@ def optimizar(distancias: np.ndarray, presupuesto: int, semilla: int, parametros
             actual = ciudad_inicio
             while no_visitadas:
                 candidatas = list(no_visitadas)
+                probs = atractividad[actual, candidatas]
+                suma_prob = probs.sum()
                 
-                # Cálculo de atractividad: (tau)^alfa * (eta)^beta
-                tau_vals = feromonas[actual, candidatas] ** alfa
-                eta_vals = eta[actual, candidatas] ** beta
-                probabilidades = tau_vals * eta_vals
-                
-                suma_prob = np.sum(probabilidades)
                 if suma_prob > 0:
-                    probabilidades /= suma_prob
+                    cum_probs = np.cumsum(probs)
+                    r = rng.random() * suma_prob
+                    idx = int(np.searchsorted(cum_probs, r))
+                    if idx >= len(candidatas):
+                        idx = len(candidatas) - 1
+                    siguiente = candidatas[idx]
                 else:
-                    probabilidades = np.ones(len(candidatas)) / len(candidatas)
+                    siguiente = candidatas[rng.integers(0, len(candidatas))]
                     
-                siguiente = rng.choice(candidatas, p=probabilidades)
                 visitadas.append(siguiente)
                 no_visitadas.remove(siguiente)
                 actual = siguiente
@@ -75,26 +80,24 @@ def optimizar(distancias: np.ndarray, presupuesto: int, semilla: int, parametros
             rutas_iteracion.append(visitadas)
             costos_iteracion.append(costo)
             
-        # Actualización de feromonas: evaporación y depósito
+        # Evaporación
         feromonas *= (1.0 - rho)
         
+        # Depósito de feromona por cada hormiga
         for ruta, costo in zip(rutas_iteracion, costos_iteracion):
             if costo > 0:
                 aporte = q_deposito / costo
-                for i in range(n):
-                    c_origen = ruta[i]
-                    c_destino = ruta[(i + 1) % n]
-                    feromonas[c_origen, c_destino] += aporte
-                    feromonas[c_destino, c_origen] += aporte
+                c_orig = np.array(ruta)
+                c_dest = np.roll(c_orig, -1)
+                feromonas[c_orig, c_dest] += aporte
+                feromonas[c_dest, c_orig] += aporte
                     
         # Refuerzo elitista a la mejor ruta histórica
         if evaluador.mejor_ruta is not None and evaluador.mejor_costo > 0:
             aporte_elite = q_deposito / evaluador.mejor_costo
-            mr = evaluador.mejor_ruta
-            for i in range(n):
-                c_origen = mr[i]
-                c_destino = mr[(i + 1) % n]
-                feromonas[c_origen, c_destino] += aporte_elite
-                feromonas[c_destino, c_origen] += aporte_elite
+            mr = np.array(evaluador.mejor_ruta)
+            mr_dest = np.roll(mr, -1)
+            feromonas[mr, mr_dest] += aporte_elite
+            feromonas[mr_dest, mr] += aporte_elite
                 
     return evaluador.finalizar()

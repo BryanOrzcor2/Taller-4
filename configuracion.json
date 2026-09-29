@@ -1,0 +1,77 @@
+{
+  "descripcion": "Configuración centralizada de experimentos TSP - Taller 4 Maestría en IA",
+  "modo_piloto": true,
+  "piloto": {
+    "tamanos_n": [20, 50],
+    "instancias_por_tamano": 2,
+    "semillas_instancias": [42, 101],
+    "repeticiones_R": 3,
+    "presupuestos_FEs": {
+      "20": 2000,
+      "50": 5000,
+      "100": 10000
+    }
+  },
+  "completo": {
+    "tamanos_n": [20, 50, 100],
+    "instancias_por_tamano": 5,
+    "semillas_instancias": [42, 101, 202, 303, 404],
+    "repeticiones_R": 30,
+    "presupuestos_FEs": {
+      "20": 10000,
+      "50": 30000,
+      "100": 60000
+    }
+  },
+  "semillas_ejecucion_base": 12345,
+  "algoritmos": {
+    "Hill Climbing": {
+      "modulo": "hill_climbing",
+      "parametros": {
+        "paciencia_reinicio": 500
+      }
+    },
+    "Simulated Annealing": {
+      "modulo": "simulated_annealing",
+      "parametros": {
+        "t_inicial": 100.0,
+        "alfa": 0.995,
+        "t_minima": 0.0001,
+        "pasos_por_temperatura": 10
+      }
+    },
+    "Genetic Algorithm": {
+      "modulo": "genetic_algorithm",
+      "parametros": {
+        "tam_poblacion": 50,
+        "prob_cruce": 0.90,
+        "prob_mutacion": 0.20,
+        "k_torneo": 3
+      }
+    },
+    "Ant Colony Optimization": {
+      "modulo": "aco",
+      "parametros": {
+        "n_hormigas": 25,
+        "alfa": 1.0,
+        "beta": 3.0,
+        "rho": 0.10,
+        "q_deposito": 100.0
+      }
+    },
+    "Particle Swarm Optimization": {
+      "modulo": "pso",
+      "parametros": {
+        "n_particulas": 40,
+        "w": 0.7298,
+        "c1": 1.49618,
+        "c2": 1.49618,
+        "v_max": 4.0
+      }
+    }
+  },
+  "rutas": {
+    "archivo_csv_salida": "resultados/experimentos_tsp.csv",
+    "archivo_resumen_salida": "resultados/resumen_metricas.csv"
+  }
+}
