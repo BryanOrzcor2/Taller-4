@@ -1,0 +1,11 @@
+n,algoritmo,mejor_costo,media_costo,mediana_costo,std_costo,error_medio_pct,tasa_exito_pct,tiempo_medio_s,memoria_media_mb,fes_mejor_medio
+20,Ant Colony Optimization,341.58,372.77,369.63,34.36,0.79,66.67,5.06,0.04,483.33
+20,Genetic Algorithm,384.64,445.99,444.69,47.17,21.45,0.0,0.83,0.04,1933.33
+20,Hill Climbing,341.58,370.97,371.4,31.73,0.34,100.0,0.31,0.01,1466.67
+20,Particle Swarm Optimization,462.2,519.19,510.33,51.17,42.17,0.0,1.02,0.03,1866.67
+20,Simulated Annealing,579.29,606.77,604.48,25.01,65.33,0.0,0.33,0.01,1733.33
+50,Ant Colony Optimization,555.98,579.69,580.88,24.24,0.15,100.0,21.84,0.14,3333.33
+50,Genetic Algorithm,824.68,895.91,883.0,74.09,55.02,0.0,2.4,0.1,5000.0
+50,Hill Climbing,599.48,632.83,634.03,22.76,9.39,0.0,0.66,0.01,4333.33
+50,Particle Swarm Optimization,1187.67,1438.74,1459.4,138.0,148.91,0.0,1.74,0.06,5000.0
+50,Simulated Annealing,857.32,960.43,986.98,84.02,65.89,0.0,0.66,0.01,5000.0
