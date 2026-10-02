@@ -52,9 +52,11 @@ ORDEN_ALGOS = [
 # ==============================================================================
 # FIGURA 1: Rutas obtenidas por los 5 métodos en una misma instancia (Sección 4.d)
 # ==============================================================================
-def generar_figura_1_rutas(n_ciudades=20, semilla=42, presupuesto=2000):
-    print(" -> Generando Figura 1: Rutas comparadas 2D (Sección 4.d)...")
-    coords, distancias = generar_instancia_tsp(n_ciudades, semilla)
+def generar_figura_1_rutas():
+    print(" -> Generando Figura 1: Rutas comparadas 2D para n in [20, 50, 100] (Sección 4.d)...")
+    tamanos = [20, 50, 100]
+    presupuestos = {20: 2000, 50: 5000, 100: 10000}
+    semilla = 42
     
     modulos = {
         "Hill Climbing": hill_climbing,
@@ -64,45 +66,77 @@ def generar_figura_1_rutas(n_ciudades=20, semilla=42, presupuesto=2000):
         "Particle Swarm Optimization": pso
     }
     
-    fig, axes = plt.subplots(1, 5, figsize=(22, 4.5))
-    fig.suptitle(f"Figura 1: Rutas Finales TSP en una Misma Instancia (n={n_ciudades} Ciudades, Semilla={semilla})", 
-                 fontsize=14, fontweight="bold", y=1.03)
+    # 1. Gráfica consolidada 3x5 (3 tamaños x 5 algoritmos)
+    fig, axes = plt.subplots(3, 5, figsize=(22, 13))
+    fig.suptitle(f"Figura 1: Rutas Finales TSP por Algoritmo en Misma Instancia (Semilla={semilla})\nComparación en n=20, 50 y 100 Ciudades (Sección 4.d)", 
+                 fontsize=14, fontweight="bold", y=0.995)
     
-    for idx, algo in enumerate(ORDEN_ALGOS):
-        ax = axes[idx]
-        mod = modulos[algo]
-        res = mod.optimizar(distancias, presupuesto, semilla)
-        ruta = res["mejor_ruta"]
-        costo = res["mejor_costo"]
+    for row_idx, n_ciudades in enumerate(tamanos):
+        coords, distancias = generar_instancia_tsp(n_ciudades, semilla)
+        presupuesto = presupuestos[n_ciudades]
         
-        orden = ruta + [ruta[0]]
-        coords_orden = coords[orden]
+        # Subfigura individual por cada tamaño
+        fig_sub, axes_sub = plt.subplots(1, 5, figsize=(22, 4.5))
+        fig_sub.suptitle(f"Rutas Finales TSP en una Misma Instancia (n={n_ciudades} Ciudades, Semilla={semilla})", 
+                         fontsize=13, fontweight="bold", y=1.03)
         
-        ax.plot(coords_orden[:, 0], coords_orden[:, 1], color=COLORES[algo], lw=1.8, alpha=0.9, zorder=2)
-        ax.scatter(coords[:, 0], coords[:, 1], color="#2c3e50", s=35, zorder=3)
-        ax.scatter(coords[ruta[0], 0], coords[ruta[0], 1], color="#f39c12", s=90, edgecolor="black", zorder=4, label="Inicio")
-        
-        ax.set_title(f"{algo}\nCosto: {costo:.2f}", fontsize=11, fontweight="bold")
-        ax.set_xlim(-5, 105)
-        ax.set_ylim(-5, 105)
-        ax.grid(True, linestyle="--", alpha=0.4)
-        ax.set_aspect("equal")
-        if idx == 0:
-            ax.legend(loc="upper right", fontsize=8)
+        for col_idx, algo in enumerate(ORDEN_ALGOS):
+            ax = axes[row_idx, col_idx]
+            ax_sub = axes_sub[col_idx]
             
-    plt.tight_layout()
+            mod = modulos[algo]
+            res = mod.optimizar(distancias, presupuesto, semilla)
+            ruta = res["mejor_ruta"]
+            costo = res["mejor_costo"]
+            
+            orden = ruta + [ruta[0]]
+            coords_orden = coords[orden]
+            
+            # Dibujar en la figura grande consolidada 3x5
+            ax.plot(coords_orden[:, 0], coords_orden[:, 1], color=COLORES[algo], lw=1.5, alpha=0.9, zorder=2)
+            ax.scatter(coords[:, 0], coords[:, 1], color="#2c3e50", s=25 if n_ciudades==100 else 35, zorder=3)
+            ax.scatter(coords[ruta[0], 0], coords[ruta[0], 1], color="#f39c12", s=70, edgecolor="black", zorder=4, label="Inicio" if col_idx==0 else "")
+            ax.set_title(f"{algo} (n={n_ciudades})\nCosto: {costo:.2f}", fontsize=10, fontweight="bold")
+            ax.set_xlim(-5, 105)
+            ax.set_ylim(-5, 105)
+            ax.grid(True, linestyle="--", alpha=0.4)
+            ax.set_aspect("equal")
+            if col_idx == 0:
+                ax.legend(loc="upper right", fontsize=8)
+                
+            # Dibujar en la subfigura individual
+            ax_sub.plot(coords_orden[:, 0], coords_orden[:, 1], color=COLORES[algo], lw=1.8, alpha=0.9, zorder=2)
+            ax_sub.scatter(coords[:, 0], coords[:, 1], color="#2c3e50", s=25 if n_ciudades==100 else 35, zorder=3)
+            ax_sub.scatter(coords[ruta[0], 0], coords[ruta[0], 1], color="#f39c12", s=90, edgecolor="black", zorder=4, label="Inicio" if col_idx==0 else "")
+            ax_sub.set_title(f"{algo}\nCosto: {costo:.2f}", fontsize=11, fontweight="bold")
+            ax_sub.set_xlim(-5, 105)
+            ax_sub.set_ylim(-5, 105)
+            ax_sub.grid(True, linestyle="--", alpha=0.4)
+            ax_sub.set_aspect("equal")
+            if col_idx == 0:
+                ax_sub.legend(loc="upper right", fontsize=8)
+                
+        fig_sub.tight_layout()
+        sub_out = os.path.join(FIGURAS_DIR, f"01_rutas_comparadas_2d_n{n_ciudades}.png")
+        fig_sub.savefig(sub_out, dpi=300, bbox_inches="tight")
+        plt.close(fig_sub)
+        print(f"    [OK] Guardada subfigura individual: {sub_out}")
+        
+    fig.tight_layout()
     ruta_out = os.path.join(FIGURAS_DIR, "01_rutas_comparadas_2d.png")
-    plt.savefig(ruta_out, dpi=300, bbox_inches="tight")
-    plt.close()
-    print(f"    [OK] Guardada: {ruta_out}")
+    fig.savefig(ruta_out, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+    print(f"    [OK] Guardada figura 3x5 consolidada: {ruta_out}")
 
 
 # ==============================================================================
 # FIGURA 2: Curvas de convergencia promedio con banda de variabilidad (Sección 4.a)
 # ==============================================================================
-def generar_figura_2_convergencia(n_ciudades=20, semilla=42, presupuesto=2000, repeticiones=2):
-    print(" -> Generando Figura 2: Curvas de convergencia con banda de variabilidad (Sección 4.a)...")
-    coords, distancias = generar_instancia_tsp(n_ciudades, semilla)
+def generar_figura_2_convergencia(semilla=42, repeticiones=3):
+    print(" -> Generando Figura 2: Curvas de convergencia con banda para n in [20, 50, 100] (Sección 4.a)...")
+    tamanos = [20, 50, 100]
+    presupuestos = {20: 2000, 50: 5000, 100: 10000}
+    porcentajes = [0.01, 0.05, 0.10, 0.20, 0.40, 0.60, 0.80, 1.00]
     
     modulos = {
         "Hill Climbing": hill_climbing,
@@ -112,43 +146,47 @@ def generar_figura_2_convergencia(n_ciudades=20, semilla=42, presupuesto=2000, r
         "Particle Swarm Optimization": pso
     }
     
-    # Hitos fijos estandarizados (1%, 5%, 10%, 20%, 40%, 60%, 80%, 100%)
-    porcentajes = [0.01, 0.05, 0.10, 0.20, 0.40, 0.60, 0.80, 1.00]
-    hitos_fes = [int(p * presupuesto) for p in porcentajes]
-    
-    plt.figure(figsize=(10, 6))
-    
-    for algo in ORDEN_ALGOS:
-        mod = modulos[algo]
-        matriz_costos = []
+    fig, axes = plt.subplots(1, 3, figsize=(19, 5.5))
+    fig.suptitle(f"Figura 2: Curvas de Convergencia Promedio con Banda de Variabilidad ($\pm 1\sigma$, R={repeticiones} Repeticiones)",
+                 fontsize=13, fontweight="bold", y=1.02)
+                 
+    for idx, n_ciudades in enumerate(tamanos):
+        ax = axes[idx]
+        presupuesto = presupuestos[n_ciudades]
+        hitos_fes = [int(p * presupuesto) for p in porcentajes]
+        coords, distancias = generar_instancia_tsp(n_ciudades, semilla)
         
-        for r in range(repeticiones):
-            res = mod.optimizar(distancias, presupuesto, semilla + r * 100)
-            hist = dict(res["historial"])
+        for algo in ORDEN_ALGOS:
+            mod = modulos[algo]
+            matriz_costos = []
             
-            # Extraer costo en cada hito con interpolación hacia el último valor conocido
-            fila = []
-            ultimo = float("inf")
-            for h in hitos_fes:
-                if h in hist:
-                    ultimo = hist[h]
-                fila.append(ultimo)
-            matriz_costos.append(fila)
+            for r in range(repeticiones):
+                res = mod.optimizar(distancias, presupuesto, semilla + r * 100)
+                hist = dict(res["historial"])
+                
+                fila = []
+                ultimo = float("inf")
+                for h in hitos_fes:
+                    if h in hist:
+                        ultimo = hist[h]
+                    fila.append(ultimo)
+                matriz_costos.append(fila)
+                
+            matriz_costos = np.array(matriz_costos)
+            media = np.mean(matriz_costos, axis=0)
+            std = np.std(matriz_costos, axis=0)
             
-        matriz_costos = np.array(matriz_costos)
-        media = np.mean(matriz_costos, axis=0)
-        std = np.std(matriz_costos, axis=0)
-        
-        plt.plot(hitos_fes, media, "o-", label=algo, color=COLORES[algo], lw=2.2, markersize=6)
-        plt.fill_between(hitos_fes, np.maximum(0, media - std), media + std, color=COLORES[algo], alpha=0.15)
-        
-    plt.title(f"Figura 2: Curvas de Convergencia Promedio (n={n_ciudades}, R={repeticiones} Reps con Banda $\\pm 1\\sigma$)",
-              fontsize=13, fontweight="bold")
-    plt.xlabel("Evaluaciones de la Función Objetivo (FEs)", fontsize=11, fontweight="bold")
-    plt.ylabel("Mejor Costo Histórico Encontrado", fontsize=11, fontweight="bold")
-    plt.grid(True, linestyle="--", alpha=0.5)
-    plt.legend(fontsize=10, loc="upper right")
-    
+            ax.plot(hitos_fes, media, "o-", label=algo, color=COLORES[algo], lw=2.0, markersize=5)
+            ax.fill_between(hitos_fes, np.maximum(0, media - std), media + std, color=COLORES[algo], alpha=0.15)
+            
+        ax.set_title(f"Instancia n = {n_ciudades} Ciudades (FEs={presupuesto})", fontsize=11, fontweight="bold")
+        ax.set_xlabel("Evaluaciones de la Función Objetivo (FEs)", fontsize=10, fontweight="bold")
+        ax.set_ylabel("Mejor Costo Histórico", fontsize=10, fontweight="bold")
+        ax.grid(True, linestyle="--", alpha=0.5)
+        if idx == 0:
+            ax.legend(fontsize=9, loc="upper right")
+            
+    plt.tight_layout()
     ruta_out = os.path.join(FIGURAS_DIR, "02_curvas_convergencia_banda.png")
     plt.savefig(ruta_out, dpi=300, bbox_inches="tight")
     plt.close()

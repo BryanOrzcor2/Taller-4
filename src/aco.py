@@ -54,26 +54,28 @@ def optimizar(distancias: np.ndarray, presupuesto: int, semilla: int, parametros
                 
             ciudad_inicio = int(rng.integers(0, n))
             visitadas = [ciudad_inicio]
-            no_visitadas = set(range(n)) - {ciudad_inicio}
+            visitado = np.zeros(n, dtype=bool)
+            visitado[ciudad_inicio] = True
             
             actual = ciudad_inicio
-            while no_visitadas:
-                candidatas = list(no_visitadas)
-                probs = atractividad[actual, candidatas]
-                suma_prob = probs.sum()
+            for _ in range(n - 1):
+                probs = atractividad[actual].copy()
+                probs[visitado] = 0.0
+                cum_probs = np.cumsum(probs)
+                suma_prob = cum_probs[-1]
                 
                 if suma_prob > 0:
-                    cum_probs = np.cumsum(probs)
                     r = rng.random() * suma_prob
-                    idx = int(np.searchsorted(cum_probs, r))
-                    if idx >= len(candidatas):
-                        idx = len(candidatas) - 1
-                    siguiente = candidatas[idx]
+                    siguiente = int(np.searchsorted(cum_probs, r))
+                    if siguiente >= n or visitado[siguiente]:
+                        no_vis = np.where(~visitado)[0]
+                        siguiente = int(rng.choice(no_vis))
                 else:
-                    siguiente = candidatas[rng.integers(0, len(candidatas))]
+                    no_vis = np.where(~visitado)[0]
+                    siguiente = int(rng.choice(no_vis))
                     
                 visitadas.append(siguiente)
-                no_visitadas.remove(siguiente)
+                visitado[siguiente] = True
                 actual = siguiente
                 
             costo = evaluador.evaluar(visitadas)

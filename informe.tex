@@ -72,31 +72,31 @@ El análisis de escalabilidad evalúa el impacto del incremento en la dimensiona
 
 \begin{table}[htbp]
 \centering
-\caption{Tasa de éxito (error $\le 1\%$) y esfuerzo computacional (FEs) para alcanzar el umbral}
+\caption{Tasa de éxito ($\text{Error} \le 1\%$) y esfuerzo computacional (FEs) para alcanzar el óptimo ($R=30$ réplicas)}
 \label{tab:escalabilidad_exito}
 \small
-\begin{tabular}{lcccc}
+\begin{tabular}{lcccccc}
 \toprule
-\textbf{Algoritmo} & \multicolumn{2}{c}{\textbf{Tasa de Éxito (\%)}} & \multicolumn{2}{c}{\textbf{FEs al Mejor / Umbral}} \\
-\cmidrule(lr){2-3} \cmidrule(lr){4-5}
-& $n=20$ & $n=50$ & $n=20$ & $n=50$ \\
+\textbf{Algoritmo} & \multicolumn{3}{c}{\textbf{Tasa de Éxito (\%)}} & \multicolumn{3}{c}{\textbf{FEs Promedio al Mejor}} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7}
+& $n=20$ & $n=50$ & $n=100$ & $n=20$ & $n=50$ & $n=100$ \\
 \midrule
-Ant Colony Optimization (ACO)      & 66.67\% & \textbf{100.00\%} & \textbf{483.3}  & \textbf{3333.3} \\
-Hill Climbing (HC)                 & \textbf{100.00\%} & 0.00\%   & 1466.7 & 4333.3$^*$ \\
-Genetic Algorithm (GA)             & 0.00\%  & 0.00\%            & 1933.3 & 5000.0$^*$ \\
-Particle Swarm Optimization (PSO)     & 0.00\%  & 0.00\%            & 1866.7 & 5000.0$^*$ \\
-Simulated Annealing (SA)           & 0.00\%  & 0.00\%            & 1733.3 & 5000.0$^*$ \\
+Ant Colony Optimization (ACO)      & 84.67\% & \textbf{73.33\%} & \textbf{31.33\%} & \textbf{1988}  & \textbf{17620} & 41000 \\
+Hill Climbing (HC)                 & \textbf{96.00\%} & 0.67\%  & 0.00\%           & 4433           & 18500          & \textbf{39280} \\
+Simulated Annealing (SA)           & 84.67\% & 6.00\%           & 1.33\%           & 8027           & 16320          & 41600 \\
+Genetic Algorithm (GA)             & 58.67\% & 0.67\%           & 0.00\%           & 5640           & 28320          & 60000$^*$ \\
+Particle Swarm Optimization (PSO)  & 0.67\%  & 0.00\%           & 0.00\%           & 5213           & 25240          & 56240 \\
 \bottomrule
-\multicolumn{5}{l}{\footnotesize $^*$Agotó el presupuesto computacional sin alcanzar el umbral del 1\%.}
+\multicolumn{7}{l}{\footnotesize $^*$Agotó el presupuesto completo de evaluaciones sin converger al umbral del 1\%.}
 \end{tabular}
 \end{table}
 
 \subsection{Análisis de Escalabilidad: Rapidez vs. Calidad de Optimización}
 Un principio metodológico fundamental en metaheurísticas es distinguir la rapidez de cómputo de la calidad de optimización:
 \begin{enumerate}
-    \item \textbf{Huella temporal y espacial:} Los métodos de trayectoria (HC y SA) consumen un tiempo ínfimo ($t < 0.70$\,s en $n=50$) y una huella en memoria casi constante ($\approx 10$\,KB), dado que mantienen en RAM únicamente la ruta candidata actual. Por el contrario, ACO escala cuadráticamente $\mathcal{O}(m \cdot n^2)$ por ciclo debido a la construcción probabilística de soluciones sobre la matriz de feromonas, alcanzando $21.84$\,s en $n=50$.
-    \item \textbf{El colapso de los métodos rápidos:} A pesar de su ligereza temporal, Hill Climbing colapsa en calidad al aumentar la complejidad del paisaje: su tasa de éxito cayó del 100\% en $n=20$ al 0\% en $n=50$ (con $9.39\%$ de error medio) debido a que queda atrapado en cuencas de atracción locales. Simulated Annealing y PSO mostraron un estancamiento aún más severo, finalizando con errores promedio de $65.89\%$ y $148.91\%$ respectivamente.
-    \item \textbf{Veredicto de escalabilidad:} \textbf{ACO es el algoritmo que mejor escala en calidad global}. En $n=50$ fue el único método capaz de alcanzar el umbral del 1\% con una tasa de éxito perfecta (100\%) y un error relativo medio de apenas $0.15\%$. Su memoria colectiva distribuida permite preservar componentes de ciclo eficientes en dimensiones elevadas.
+    \item \textbf{Huella temporal y espacial:} Los métodos de trayectoria (HC y SA) consumen un tiempo ínfimo ($t < 16$\,s en $n=100$) y una huella en memoria casi nula ($\approx 10$\,KB), dado que mantienen en RAM únicamente la ruta candidata actual. Por el contrario, ACO escala cuadráticamente $\mathcal{O}(m \cdot n^2)$ por ciclo debido a la construcción probabilística de soluciones sobre la matriz de feromonas, alcanzando $729.66$\,s en $n=100$.
+    \item \textbf{El colapso de los métodos rápidos:} A pesar de su ligereza temporal, Hill Climbing colapsa en calidad al aumentar la complejidad del paisaje: su tasa de éxito cayó del 96.00\% en $n=20$ al 0.67\% en $n=50$ y 0.00\% en $n=100$ (con $16.09\%$ de error medio) debido a que queda atrapado en óptimos locales tempranos. Simulated Annealing logra amortiguar levemente la caída gracias a la aceptación termodinámica de empeoramientos ($7.73\%$ de error en $n=100$).
+    \item \textbf{Veredicto de escalabilidad:} \textbf{ACO es el indiscutible ganador en calidad global y robustez}. En $n=50$ logró una tasa de éxito del 73.33\% (error medio $0.73\%$), y en $n=100$ fue el único método capaz de mantener un error medio mínimo ($1.42\%$) y tasa de éxito del 31.33\%. Su memoria colectiva distribuida permite preservar componentes de ciclo eficientes en altas dimensiones.
 \end{enumerate}
 
 % =========================================================================
@@ -105,16 +105,16 @@ Un principio metodológico fundamental en metaheurísticas es distinguir la rapi
 \section{Punto 4: Rendimiento, Convergencia y Estabilidad}
 
 \subsection{Dinámica de Convergencia y Estabilidad (Literal 4.a)}
-La Figura~\ref{fig:convergencia} exhibe las trayectorias de optimización a lo largo de las iteraciones para $n=20$ y $n=50$. La banda sombreada representa la desviación típica ($\pm 1\,\sigma$) entre ejecuciones independientes. 
+La Figura~\ref{fig:convergencia} exhibe las trayectorias de optimización a lo largo de las evaluaciones para $n \in \{20, 50, 100\}$. La banda sombreada representa la desviación típica ($\pm 1\,\sigma$) entre ejecuciones independientes. 
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.92\linewidth]{figuras/02_curvas_convergencia_banda.png}
-    \caption{Curvas de convergencia del mejor costo por iteración con banda de varianza ($\pm 1\,\sigma$) para $n=20$ (izq.) y $n=50$ (der.).}
+    \includegraphics[width=0.98\linewidth]{figuras/02_curvas_convergencia_banda.png}
+    \caption{Curvas de convergencia del mejor costo por FEs con banda de varianza ($\pm 1\,\sigma$) para $n=20, 50, 100$.}
     \label{fig:convergencia}
 \end{figure}
 
-Se aprecia que ACO desciende de forma suave y monótona con bandas de varianza sumamente estrechas, evidenciando una estabilidad estocástica superior. Hill Climbing converge prematuramente antes de la iteración 40 en $n=50$, estancando su progreso. PSO exhibe la convergencia más lenta y deficiente debido a la dificultad de codificar velocidades continuas en espacios de permutación discretos.
+Se aprecia que ACO desciende de forma suave y monótona con bandas de varianza sumamente estrechas, evidenciando una estabilidad estocástica superior. Hill Climbing converge prematuramente antes de agotar la mitad del presupuesto, estancando su progreso. PSO exhibe la convergencia más deficiente debido a la distorsión geométrica de las claves continuas ordenadas en el TSP.
 
 \subsection{Distribución del Error Relativo (Literal 4.b)}
 La Figura~\ref{fig:boxplots} muestra los diagramas de caja (boxplots) del error relativo porcentual respecto al óptimo global/mejor cota conocida:
@@ -124,19 +124,19 @@ La Figura~\ref{fig:boxplots} muestra los diagramas de caja (boxplots) del error 
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.92\linewidth]{figuras/03_boxplots_error_relativo.png}
-    \caption{Diagramas de caja del error relativo porcentual para los 5 algoritmos en $n=20$ y $n=50$ ciudades.}
+    \includegraphics[width=0.98\linewidth]{figuras/03_boxplots_error_relativo.png}
+    \caption{Diagramas de caja del error relativo porcentual para los 5 algoritmos en $n=20, 50, 100$ ciudades.}
     \label{fig:boxplots}
 \end{figure}
 
-El boxplot confirma que la distribución de ACO es hiperconcentrada en la franja $[0\%, 1\%]$, libre de valores atípicos. Hill Climbing muestra baja dispersión pero sesgo positivo moderado en $n=50$. Por su parte, PSO y GA presentan cajas de amplia envergadura, reflejando alta sensibilidad a la inicialización y falta de presión selectiva adecuada.
+El boxplot confirma que la distribución de ACO permanece hiperconcentrada en la vecindad de $[0\%, 1\%]$, libre de dispersiones caóticas. Hill Climbing y SA muestran baja dispersión pero sesgo positivo progresivo con $n$. Por su parte, PSO presenta cajas de amplia dispersión, reflejando su desajuste estructural para este dominio.
 
 \subsection{Tabla Comparativa Global de Rendimiento (Literal 4.c)}
-El Cuadro~\ref{tab:rendimiento_global} condensa todas las métricas de desempeño requeridas por el protocolo: media, mediana, desviación estándar, mejor costo encontrado y tasa de éxito.
+El Cuadro~\ref{tab:rendimiento_global} condensa todas las métricas de desempeño requeridas por el protocolo: media, mediana, desviación estándar, mejor costo encontrado y tasa de éxito sobre las 2,250 corridas.
 
 \begin{table}[htbp]
 \centering
-\caption{Métricas integrales de rendimiento, calidad de solución y estabilidad ($R=3$ repeticiones)}
+\caption{Métricas integrales de rendimiento, calidad de solución y estabilidad ($R=30$ repeticiones independientes)}
 \label{tab:rendimiento_global}
 \small
 \begin{tabularx}{\textwidth}{llrrrrrr}
@@ -144,18 +144,25 @@ El Cuadro~\ref{tab:rendimiento_global} condensa todas las métricas de desempeñ
 \textbf{$n$} & \textbf{Algoritmo} & \textbf{Mejor} & \textbf{Media} & \textbf{Mediana} & \textbf{Std} & \textbf{Error (\%)} & \textbf{Éxito (\%)} \\
 \midrule
 \multirow{5}{*}{20} 
- & Ant Colony Optimization & \textbf{341.58} & 372.77 & 369.63 & 34.36 & 0.79\% & 66.67\% \\
- & Genetic Algorithm       & 384.64 & 445.99 & 444.69 & 47.17 & 21.45\% & 0.00\% \\
- & Hill Climbing           & \textbf{341.58} & \textbf{370.97} & \textbf{371.40} & \textbf{31.73} & \textbf{0.34\%} & \textbf{100.00\%} \\
- & Particle Swarm Optim.   & 462.20 & 519.19 & 510.33 & 51.17 & 42.17\% & 0.00\% \\
- & Simulated Annealing     & 579.29 & 606.77 & 604.48 & 25.01 & 65.33\% & 0.00\% \\
+ & Ant Colony Optimization & \textbf{341.58} & 369.14 & \textbf{356.26} & 27.04 & 0.31\% & 84.67\% \\
+ & Genetic Algorithm       & \textbf{341.58} & 373.17 & 362.93 & 29.18 & 1.39\% & 58.67\% \\
+ & Hill Climbing           & \textbf{341.58} & \textbf{368.54} & \textbf{356.26} & \textbf{26.34} & \textbf{0.16\%} & \textbf{96.00\%} \\
+ & Particle Swarm Optim.   & 350.88 & 479.43 & 479.11 & 58.79 & 30.67\% & 0.67\% \\
+ & Simulated Annealing     & \textbf{341.58} & 369.54 & 361.79 & 26.41 & 0.44\% & 84.67\% \\
 \midrule
 \multirow{5}{*}{50} 
- & Ant Colony Optimization & \textbf{555.98} & \textbf{579.69} & \textbf{580.88} & 24.24 & \textbf{0.15\%} & \textbf{100.00\%} \\
- & Genetic Algorithm       & 824.68 & 895.91 & 883.00 & 74.09 & 55.02\% & 0.00\% \\
- & Hill Climbing           & 599.48 & 632.83 & 634.03 & \textbf{22.76} & 9.39\% & 0.00\% \\
- & Particle Swarm Optim.   & 1187.67 & 1438.74 & 1459.40 & 138.00 & 148.91\% & 0.00\% \\
- & Simulated Annealing     & 857.32 & 960.43 & 986.98 & 84.02 & 65.89\% & 0.00\% \\
+ & Ant Colony Optimization & \textbf{549.76} & \textbf{579.13} & \textbf{584.02} & \textbf{22.68} & \textbf{0.73\%} & \textbf{73.33\%} \\
+ & Genetic Algorithm       & 557.09 & 624.43 & 622.12 & 30.57 & 8.62\% & 0.67\% \\
+ & Hill Climbing           & 558.17 & 610.44 & 610.93 & 27.69 & 6.18\% & 0.67\% \\
+ & Particle Swarm Optim.   & 907.77 & 1203.18 & 1195.63 & 132.68 & 109.21\% & 0.00\% \\
+ & Simulated Annealing     & \textbf{549.76} & 606.69 & 608.97 & 28.65 & 5.53\% & 6.00\% \\
+\midrule
+\multirow{5}{*}{100} 
+ & Ant Colony Optimization & \textbf{765.68} & \textbf{798.72} & \textbf{799.62} & \textbf{17.23} & \textbf{1.42\%} & \textbf{31.33\%} \\
+ & Genetic Algorithm       & 866.37 & 931.36 & 928.19 & 33.93 & 18.26\% & 0.00\% \\
+ & Hill Climbing           & 821.10 & 914.24 & 915.33 & 33.26 & 16.09\% & 0.00\% \\
+ & Particle Swarm Optim.   & 2243.43 & 2656.16 & 2664.73 & 179.95 & 237.35\% & 0.00\% \\
+ & Simulated Annealing     & 793.27 & 848.42 & 846.01 & 27.61 & 7.73\% & 1.33\% \\
 \bottomrule
 \end{tabularx}
 \end{table}

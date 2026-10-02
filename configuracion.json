@@ -1,10 +1,10 @@
 {
   "descripcion": "Configuración centralizada de experimentos TSP - Taller 4 Maestría en IA",
-  "modo_piloto": true,
+  "modo_piloto": false,
   "piloto": {
-    "tamanos_n": [20, 50],
-    "instancias_por_tamano": 2,
-    "semillas_instancias": [42, 101],
+    "tamanos_n": [20, 50, 100],
+    "instancias_por_tamano": 5,
+    "semillas_instancias": [42, 101, 202, 303, 404],
     "repeticiones_R": 3,
     "presupuestos_FEs": {
       "20": 2000,

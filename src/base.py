@@ -29,8 +29,11 @@ class EvaluadorTSP:
         self.mejor_costo = float("inf")
         self.historial = []  # pares (evaluaciones, mejor_costo)
         
-        # Checkpoints de FEs exigidos por la guía (1%, 5%, 10%, 20%, 40%, 60%, 80%, 100%)
-        self.hitos_fe = {int(p * self.presupuesto): False for p in self.Hitos_PORCENTAJE}
+        # Checkpoints ordenados (1%, 5%, 10%, 20%, 40%, 60%, 80%, 100%)
+        self._hitos_lista = sorted(list(set(int(p * self.presupuesto) for p in self.Hitos_PORCENTAJE)))
+        self._idx_hito = 0
+        self._num_hitos = len(self._hitos_lista)
+        self.hitos_fe = {h: False for h in self._hitos_lista}
         
         # Mediciones de sistema
         self.tiempo_inicio = 0.0
@@ -63,11 +66,12 @@ class EvaluadorTSP:
             self.mejor_costo = float(costo)
             self.mejor_ruta = list(ruta)
 
-        # Registrar checkpoints exigidos por la guía
-        for hito_fe, registrado in self.hitos_fe.items():
-            if not registrado and self.evaluaciones >= hito_fe:
-                self.historial.append((self.evaluaciones, self.mejor_costo))
-                self.hitos_fe[hito_fe] = True
+        # Registrar checkpoints de forma inmediata sin recorrer diccionarios
+        while self._idx_hito < self._num_hitos and self.evaluaciones >= self._hitos_lista[self._idx_hito]:
+            h_fe = self._hitos_lista[self._idx_hito]
+            self.hitos_fe[h_fe] = True
+            self.historial.append((self.evaluaciones, self.mejor_costo))
+            self._idx_hito += 1
 
         return costo
 
@@ -111,8 +115,8 @@ def operador_2opt(ruta: list, i: int, j: int) -> list:
     """
     if i > j:
         i, j = j, i
-    nueva_ruta = ruta.copy()
-    nueva_ruta[i:j + 1] = reversed(nueva_ruta[i:j + 1])
+    nueva_ruta = list(ruta)
+    nueva_ruta[i:j + 1] = nueva_ruta[i:j + 1][::-1]
     return nueva_ruta
 
 
@@ -124,3 +128,4 @@ def generar_vecino_2opt(ruta: list, rng: np.random.Generator) -> list:
     n = len(ruta)
     i, j = rng.choice(n, size=2, replace=False)
     return operador_2opt(ruta, i, j)
+

@@ -4,3 +4,5 @@ __pycache__/
 .vscode/
 .idea/
 .DS_Store
+resultados/backup_piloto/
+test_speed.py

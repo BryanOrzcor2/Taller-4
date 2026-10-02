@@ -51,14 +51,45 @@ def obtener_fes_mejor(historial: list, mejor_costo: float) -> int:
     return int(historial[-1][0]) if historial else 0
 
 
-def ejecutar_banco_pruebas(config: dict, forzar_modo: str = None):
+def _tarea_ejecucion_individual(tarea):
+    """
+    Ejecuta un único experimento en un proceso de CPU independiente.
+    Garantiza aislamiento total y paralelismo real sin bloqueo de GIL.
+    """
+    (nombre_algo, n, inst_idx, rep, semilla_corrida, distancias, presupuesto, params) = tarea
+    modulo = MODULOS_ALGORITMOS[nombre_algo]
+    res = modulo.optimizar(distancias, presupuesto, semilla_corrida, params)
+    
+    assert es_ruta_valida(res["mejor_ruta"], n), f"Ruta inválida generada por {nombre_algo}"
+    costo_recalc = calcular_costo_ruta(res["mejor_ruta"], distancias)
+    assert np.isclose(res["mejor_costo"], costo_recalc, atol=1e-5), f"Costo inconsistente en {nombre_algo}"
+    fes_mejor = obtener_fes_mejor(res["historial"], res["mejor_costo"])
+    
+    return {
+        "algoritmo": nombre_algo,
+        "n": int(n),
+        "instancia": f"inst_{n}_{inst_idx}",
+        "repeticion": int(rep),
+        "semilla": int(semilla_corrida),
+        "costo": float(res["mejor_costo"]),
+        "error": 0.0,
+        "tiempo": float(res["tiempo_s"]),
+        "memoria": float(res["memoria_mb"]),
+        "FEs_mejor": int(fes_mejor)
+    }
+
+
+def ejecutar_banco_pruebas(config: dict, forzar_modo: str = None, n_workers: int = None):
     """
     Ejecuta el protocolo experimental completo asegurando:
     1. Las mismas semillas maestras para todos los algoritmos.
     2. Presupuestos idénticos de evaluaciones (FEs).
     3. Medición de memoria pico (tracemalloc) y tiempo neto.
     4. Generación del CSV con las 10 columnas obligatorias de la guía.
+    5. Aceleración multiproceso paralela (ProcessPoolExecutor) en múltiples núcleos.
     """
+    import concurrent.futures
+
     base_dir = os.path.dirname(os.path.abspath(__file__))
     
     # Determinar modo (piloto para pruebas rápidas vs completo para corrida formal)
@@ -73,6 +104,9 @@ def ejecutar_banco_pruebas(config: dict, forzar_modo: str = None):
     presupuestos_FEs = {int(k): v for k, v in cfg_modo["presupuestos_FEs"].items()}
     semilla_base = config.get("semillas_ejecucion_base", 12345)
     
+    if n_workers is None:
+        n_workers = max(1, (os.cpu_count() or 4) - 1)
+        
     print("=" * 85)
     print(f"EJECUTOR EXPERIMENTAL TSP - PROTOCOLO DE EVALUACIÓN (Modo: {modo.upper()})")
     print("=" * 85)
@@ -81,8 +115,21 @@ def ejecutar_banco_pruebas(config: dict, forzar_modo: str = None):
     print(f"• Repeticiones por combinación (R): {repeticiones_R}")
     print(f"• Presupuestos FEs: {presupuestos_FEs}")
     print(f"• Algoritmos: {list(config['algoritmos'].keys())}")
+    print(f"• Multiprocesamiento Paralelo: Activo con {n_workers} workers (núcleos CPU)")
     
-    total_corridas = len(tamanos_n) * len(semillas_instancias) * repeticiones_R * len(config["algoritmos"])
+    # Construir lista de tareas a ejecutar
+    lista_tareas = []
+    for n in tamanos_n:
+        presupuesto = presupuestos_FEs.get(n, 10000)
+        for inst_idx, sem_inst in enumerate(semillas_instancias, 1):
+            coords, distancias = generar_instancia_tsp(n, sem_inst)
+            for rep in range(1, repeticiones_R + 1):
+                semilla_corrida = int(semilla_base + (n * 1000) + (inst_idx * 100) + rep)
+                for nombre_algo, info_algo in config["algoritmos"].items():
+                    params = info_algo.get("parametros", {})
+                    lista_tareas.append((nombre_algo, n, inst_idx, rep, semilla_corrida, distancias, presupuesto, params))
+
+    total_corridas = len(lista_tareas)
     print(f"• Total de corridas a ejecutar: {total_corridas}")
     print("=" * 85)
 
@@ -90,49 +137,30 @@ def ejecutar_banco_pruebas(config: dict, forzar_modo: str = None):
     contador = 0
     t_global_inicio = time.time()
 
-    # Iterar por cada tamaño de problema
-    for n in tamanos_n:
-        presupuesto = presupuestos_FEs.get(n, 10000)
-        
-        # Iterar por cada instancia
-        for inst_idx, sem_inst in enumerate(semillas_instancias, 1):
-            coords, distancias = generar_instancia_tsp(n, sem_inst)
-            
-            # Repeticiones independientes
-            for rep in range(1, repeticiones_R + 1):
-                # Generar una semilla idéntica para esta repetición que compartirán todos los algoritmos
-                semilla_corrida = int(semilla_base + (n * 1000) + (inst_idx * 100) + rep)
-                
-                # Ejecutar cada uno de los 5 algoritmos sobre la misma instancia y semilla
-                for nombre_algo, info_algo in config["algoritmos"].items():
-                    contador += 1
-                    modulo = MODULOS_ALGORITMOS[nombre_algo]
-                    params = info_algo.get("parametros", {})
-                    
-                    sys.stdout.write(f"\r[{contador}/{total_corridas}] n={n} | Inst {inst_idx} | Rep {rep}/{repeticiones_R} | {nombre_algo:<26}")
+    if n_workers > 1:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=n_workers) as executor:
+            for resultado in executor.map(_tarea_ejecucion_individual, lista_tareas):
+                contador += 1
+                porc = 100.0 * contador / total_corridas
+                msg = f"[{contador:4d}/{total_corridas}] ({porc:5.1f}%) | n={resultado['n']} | {resultado['instancia']} | Rep {resultado['repeticion']:02d} | {resultado['algoritmo']:<24} | costo={resultado['costo']:.2f}"
+                if contador % 25 == 0 or contador == total_corridas:
+                    print(msg, flush=True)
+                else:
+                    sys.stdout.write(f"\r{msg}")
                     sys.stdout.flush()
-                    
-                    res = modulo.optimizar(distancias, presupuesto, semilla_corrida, params)
-                    
-                    # Validaciones obligatorias de seguridad
-                    assert es_ruta_valida(res["mejor_ruta"], n), f"Ruta inválida generada por {nombre_algo}"
-                    costo_recalc = calcular_costo_ruta(res["mejor_ruta"], distancias)
-                    assert np.isclose(res["mejor_costo"], costo_recalc, atol=1e-5), f"Costo inconsistente en {nombre_algo}"
-                    
-                    fes_mejor = obtener_fes_mejor(res["historial"], res["mejor_costo"])
-                    
-                    filas_resultados.append({
-                        "algoritmo": nombre_algo,
-                        "n": int(n),
-                        "instancia": f"inst_{n}_{inst_idx}",
-                        "repeticion": int(rep),
-                        "semilla": int(semilla_corrida),
-                        "costo": float(res["mejor_costo"]),
-                        "error": 0.0,  # Se calcula relativo al mejor f* de la instancia al final
-                        "tiempo": float(res["tiempo_s"]),
-                        "memoria": float(res["memoria_mb"]),
-                        "FEs_mejor": int(fes_mejor)
-                    })
+                filas_resultados.append(resultado)
+    else:
+        for tarea in lista_tareas:
+            resultado = _tarea_ejecucion_individual(tarea)
+            contador += 1
+            porc = 100.0 * contador / total_corridas
+            msg = f"[{contador:4d}/{total_corridas}] ({porc:5.1f}%) | n={resultado['n']} | {resultado['instancia']} | Rep {resultado['repeticion']:02d} | {resultado['algoritmo']:<24} | costo={resultado['costo']:.2f}"
+            if contador % 25 == 0 or contador == total_corridas:
+                print(msg, flush=True)
+            else:
+                sys.stdout.write(f"\r{msg}")
+                sys.stdout.flush()
+            filas_resultados.append(resultado)
 
     print(f"\n\n[OK] Todas las {contador} ejecuciones terminaron en {time.time() - t_global_inicio:.2f} segundos.")
 
